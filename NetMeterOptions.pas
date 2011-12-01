@@ -130,6 +130,12 @@ type
     LogautosaveMinutes: TEdit;
     LogautosaveLabel1: TLabel;
     LogautosaveLabel2: TLabel;
+    RadioCmd: TRadioButton;
+    EditRunCmd: TEdit;
+    ListNotify: TListBox;
+    BtnAddNotify: TButton;
+    BtnDelNotify: TButton;
+    EditNotifyName: TEdit;
     procedure FormCreate(Sender: TObject);
     procedure ChkTransparencyClick(Sender: TObject);
     procedure ChkAlwaysOnTopClick(Sender: TObject);
@@ -187,6 +193,11 @@ type
     procedure RadioButton2Click(Sender: TObject);
     procedure LogautosaveMinutesChange(Sender: TObject);
     procedure LogautosaveChkClick(Sender: TObject);
+    procedure BtnAddNotifyClick(Sender: TObject);
+    procedure ListNotifyClick(Sender: TObject);
+    procedure EditRunCmdExit(Sender: TObject);
+    procedure EditNotifyNameExit(Sender: TObject);
+    procedure BtnDelNotifyClick(Sender: TObject);
   private
     { Private declarations }
     procedure OptionsChanged(b : boolean);
@@ -195,6 +206,7 @@ type
     procedure ColorPreviewUpdate;
     procedure FontPreviewUpdate;
     procedure GraphOptionsRefresh;
+    procedure ChangeCurrentNotify(i: integer);
   public
     { Public declarations }
   end;
@@ -204,12 +216,13 @@ var
 
 implementation
 
-uses NetMeterMain;
+uses NetMeterMain, NetMeterTrafficLog;
 
 {$R *.dfm}
 
 var
   opts_changed : boolean;
+  CurrentNotify : ^NotifyRecord;
 
 procedure TNMOptions.OptionsChanged(b : boolean);
 begin
@@ -349,6 +362,7 @@ begin
 
   with NMO_TMP do
     begin
+      SetLength(Notify, Length(Notify));
 
       with NetIfCombo do
         begin
@@ -388,17 +402,13 @@ begin
         for i := 1 to 7 do
           if i = WeekStartsOn then ItemIndex := i - 1;
 
-      with TLUCombo do
-        for i := 0 to 3 do
-          if TrafficLimitUnit_Values[i] = TrafficLimitUnit then ItemIndex := i;
-
-      with TLUDCombo do
-        for i := 0 to High(TrafficLimitULorDL_Values) do
-          if TrafficLimitULorDL_Values[i] = TrafficLimitULorDL then ItemIndex:=i;
-
-      with TLPCombo do
-        for i := 0 to High(TrafficLimitPeriod_Values) do
-          if TrafficLimitPeriod_Values[i] = TrafficLimitPeriod then ItemIndex:=i;
+      for i := Low(Notify) to High(Notify) do
+        ListNotify.Items.Add(Notify[i].NotifyName);
+      if Length(Notify) > 0 then
+        begin
+          ListNotify.ItemIndex := 0;
+          ChangeCurrentNotify(0);
+        end;
 
       ChkAlwaysOnTop.Checked      := AlwaysOnTop;
       ChkShowCaption.Checked      := ShowCaption;
@@ -437,20 +447,6 @@ begin
       RadioFadeout.Enabled           := ChkTransparency.Checked and ChkFadingEnabled.Checked and ChkMouseFadingEnabled.Checked;
 
       ChkRunOnStartup.Checked := RunOnStartup;
-
-      RadioBalloonHint.Checked := TrayIcon_BalloonHints;
-      RadioPopup.Checked := not(TrayIcon_BalloonHints);
-      ChkMonProbNotify.Checked := NotifyMonitoringProblems;
-
-      TVAEChk.Checked := TVAlertEnabled;
-      Label10.Enabled := TVAEChk.Checked;
-      Label11.Enabled := TVAEChk.Checked;
-      Label12.Enabled := TVAEChk.Checked;
-      TLUDCombo.Enabled := TVAEChk.Checked;
-      TLVEdit.Enabled := TVAEChk.Checked;
-      TLUCombo.Enabled := TVAEChk.Checked;
-      TLPCombo.Enabled := TVAEChk.Checked;
-      TLVEdit.Text := IntToStr(TrafficLimit);
 
       LogautoSaveChk.Checked := LogfileAutosaveEnabled;
       LogautoSaveMinutes.Enabled := LogautoSaveChk.Checked;
@@ -886,19 +882,22 @@ end;
 
 procedure TNMOptions.TLUDComboSelect(Sender: TObject);
 begin
-  NMO_TMP.TrafficLimitULorDL := TrafficLimitULorDL_Values[TLUDCombo.ItemIndex];
+  if CurrentNotify = nil then Exit;
+  CurrentNotify.TrafficLimitULorDL := TrafficLimitULorDL_Values[TLUDCombo.ItemIndex];
   OptionsChanged(TRUE);
 end;
 
 procedure TNMOptions.TLUComboSelect(Sender: TObject);
 begin
-  NMO_TMP.TrafficLimitUnit := TrafficLimitUnit_Values[TLUCombo.ItemIndex];
+  if CurrentNotify = nil then Exit;
+  CurrentNotify.TrafficLimitUnit := TrafficLimitUnit_Values[TLUCombo.ItemIndex];
   OptionsChanged(TRUE);
 end;
 
 procedure TNMOptions.TLPComboSelect(Sender: TObject);
 begin
-  NMO_TMP.TrafficLimitPeriod := TrafficLimitPeriod_Values[TLPCombo.ItemIndex];
+  if CurrentNotify = nil then Exit;
+  CurrentNotify.TrafficLimitPeriod := TrafficLimitPeriod_Values[TLPCombo.ItemIndex];
   OptionsChanged(TRUE);
 end;
 
@@ -924,14 +923,15 @@ procedure TNMOptions.TLVEditChange(Sender: TObject);
 var
   i,e : integer;
 begin
+  if CurrentNotify = nil then Exit;
   if TLVEdit.Modified then
     begin
       Val(TLVEdit.Text,i,e);
       if e = 0 then
-        NMO_TMP.TrafficLimit := i
+        CurrentNotify.TrafficLimit := i
       else
         begin
-          NMO_TMP.TrafficLimit := 0;
+          CurrentNotify.TrafficLimit := 0;
           TLVEdit.Text := Zero;
         end;
       OptionsChanged(TRUE);
@@ -940,7 +940,8 @@ end;
 
 procedure TNMOptions.TVAEChkClick(Sender: TObject);
 begin
-  NMO_TMP.TVAlertEnabled := TVAEChk.Checked;
+  if CurrentNotify = nil then Exit;
+  CurrentNotify.TVAlertEnabled := TVAEChk.Checked;
   Label10.Enabled := TVAEChk.Checked;
   Label11.Enabled := TVAEChk.Checked;
   Label12.Enabled := TVAEChk.Checked;
@@ -965,13 +966,23 @@ end;
 
 procedure TNMOptions.RadioBalloonHintClick(Sender: TObject);
 begin
-  NMO_TMP.TrayIcon_BalloonHints := RadioBalloonHint.Checked;
+  if CurrentNotify = nil then Exit;
+  with CurrentNotify^ do
+    begin
+      if RadioBalloonHint.Checked then
+        NotifyType := NT_Balloon
+      else if RadioPopup.Checked then
+        NotifyType := NT_Popup
+      else if RadioCmd.Checked then
+        NotifyType := NT_Cmd
+    end;
   OptionsChanged(TRUE);
 end;
 
 procedure TNMOptions.ChkMonProbNotifyClick(Sender: TObject);
 begin
-  NMO_TMP.NotifyMonitoringProblems := ChkMonProbNotify.Checked;
+  if CurrentNotify = nil then Exit;
+  CurrentNotify.NotifyMonitoringProblems := ChkMonProbNotify.Checked;
   OptionsChanged(TRUE);
 end;
 
@@ -985,6 +996,102 @@ procedure TNMOptions.RadioButton2Click(Sender: TObject);
 begin
   NMO_TMP.UseOldTrayIcons := TRUE;
   OptionsChanged(TRUE);
+end;
+
+procedure TNMOptions.BtnAddNotifyClick(Sender: TObject);
+var
+  n : NotifyRecord;
+  i : integer;
+begin
+  i := Length(NMO_TMP.Notify) + 1;
+  SetLength(NMO_TMP.Notify, i);
+  n.NotifyName := 'Notification ' + IntToStr(i);
+  n.NotifyType := NT_Balloon;
+  n.TVAlertEnabled := FALSE;
+  n.NotifyMonitoringProblems := FALSE;
+  n.Cmd := '';
+  n.TrafficLimit := 0;
+  n.TrafficLimitUnit := TL_Gigabytes;
+  n.TrafficLimitULorDL := TL_UpAndDown;
+  n.TrafficLimitPeriod := TL_Month;
+  NMO_TMP.Notify[High(NMO_TMP.Notify)] := n;
+  ListNotify.Items.Add(n.NotifyName);
+  OptionsChanged(TRUE);
+end;
+
+procedure TNMOptions.EditNotifyNameExit(Sender: TObject);
+begin
+  if CurrentNotify = nil then Exit;
+  CurrentNotify.NotifyName := EditNotifyName.Text;
+  ListNotify.Items.Strings[ListNotify.ItemIndex] := EditNotifyName.Text;
+  OptionsChanged(TRUE);
+end;
+
+procedure TNMOptions.ListNotifyClick(Sender: TObject);
+begin
+  ChangeCurrentNotify(ListNotify.ItemIndex);
+end;
+
+procedure TNMOptions.EditRunCmdExit(Sender: TObject);
+begin
+  if CurrentNotify = nil then Exit;
+  CurrentNotify.Cmd := EditRunCmd.Text;
+  OptionsChanged(TRUE);
+end;
+
+procedure TNMOptions.ChangeCurrentNotify(i: integer);
+begin
+  if (i < Low(NMO_TMP.Notify)) or (i > High(NMO_TMP.Notify)) then Exit;
+  CurrentNotify := @NMO_TMP.Notify[i];
+
+  with CurrentNotify^ do
+    begin
+      with TLUCombo do
+        for i := 0 to 3 do
+          if TrafficLimitUnit_Values[i] = TrafficLimitUnit then ItemIndex := i;
+
+      with TLUDCombo do
+        for i := 0 to High(TrafficLimitULorDL_Values) do
+          if TrafficLimitULorDL_Values[i] = TrafficLimitULorDL then ItemIndex:=i;
+
+      with TLPCombo do
+        for i := 0 to High(TrafficLimitPeriod_Values) do
+          if TrafficLimitPeriod_Values[i] = TrafficLimitPeriod then ItemIndex:=i;
+
+      EditRunCmd.Text := Cmd;
+      EditNotifyName.Text := NotifyName;
+      RadioBalloonHint.Checked := NotifyType = NT_Balloon;
+      RadioPopup.Checked := NotifyType = NT_Popup;
+      RadioCmd.Checked := NotifyType = NT_Cmd;
+      ChkMonProbNotify.Checked := NotifyMonitoringProblems;
+
+      TVAEChk.Checked := TVAlertEnabled;
+      Label10.Enabled := TVAEChk.Checked;
+      Label11.Enabled := TVAEChk.Checked;
+      Label12.Enabled := TVAEChk.Checked;
+      TLUDCombo.Enabled := TVAEChk.Checked;
+      TLVEdit.Enabled := TVAEChk.Checked;
+      TLUCombo.Enabled := TVAEChk.Checked;
+      TLPCombo.Enabled := TVAEChk.Checked;
+      TLVEdit.Text := IntToStr(TrafficLimit);
+    end;
+end;
+
+procedure TNMOptions.BtnDelNotifyClick(Sender: TObject);
+var
+  idx, i : integer;
+begin
+  idx := ListNotify.ItemIndex;
+  if (idx < Low(NMO_TMP.Notify)) or (idx > High(NMO_TMP.Notify)) then
+    Exit;
+  for i := idx + 1 to High(NMO_TMP.Notify) do
+    NMO_TMP.Notify[i - 1] := NMO_TMP.Notify[i];
+  ListNotify.Items.Delete(idx);
+  if idx >= ListNotify.Items.Count then
+    ListNotify.ItemIndex := idx - 1
+  else
+    ListNotify.ItemIndex := idx;
+  ChangeCurrentNotify(ListNotify.ItemIndex);
 end;
 
 end.

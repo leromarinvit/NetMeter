@@ -355,8 +355,16 @@ begin
 end;
 
 procedure TNMTotals.TrafficLimitRefresh;
+var
+n : NotifyRecord;
+i : integer;
 begin
-  if NMO.TVAlertEnabled then
+  for i := Low(NMO.Notify) to High(NMO.Notify) do
+    with NMO.Notify[i] do
+      if TVAlertEnabled and (TrafficLimit > n.TrafficLimit) then
+        n := NMO.Notify[i];
+  with n do
+  if TVAlertEnabled then
     begin
       gb_TrafficVolumeLimit.Enabled := TRUE;
       TVL_Limit.Enabled             := TRUE;

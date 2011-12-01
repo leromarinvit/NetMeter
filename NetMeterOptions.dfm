@@ -1,6 +1,6 @@
 object NMOptions: TNMOptions
-  Left = 360
-  Top = 263
+  Left = 238
+  Top = 218
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
   Caption = 'NetMeter Options'
@@ -43,7 +43,6 @@ object NMOptions: TNMOptions
     0000000000000000000000000000000000000000000000000000000000000000
     000000000000000000000000000000000000000000000000000000000000}
   OldCreateOrder = False
-  Position = poDesigned
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
@@ -56,6 +55,7 @@ object NMOptions: TNMOptions
     Default = True
     ModalResult = 1
     TabOrder = 0
+    OnClick = OKBtnClick
     Glyph.Data = {
       DE010000424DDE01000000000000760000002800000024000000120000000100
       0400000000006801000000000000000000001000000000000000000000000000
@@ -111,6 +111,7 @@ object NMOptions: TNMOptions
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 2
+    OnClick = CancelBtnClick
     Glyph.Data = {
       DE010000424DDE01000000000000760000002800000024000000120000000100
       0400000000006801000000000000000000001000000000000000000000000000
@@ -147,9 +148,10 @@ object NMOptions: TNMOptions
     Top = 8
     Width = 439
     Height = 313
-    ActivePage = TabSheet1
+    ActivePage = TabSheet3
     HotTrack = True
     MultiLine = True
+    TabIndex = 4
     TabOrder = 4
     object TabSheet1: TTabSheet
       Caption = 'General'
@@ -281,10 +283,15 @@ object NMOptions: TNMOptions
           Width = 137
           Height = 33
           Max = 255
+          Orientation = trHorizontal
           Frequency = 32
+          Position = 0
+          SelEnd = 0
+          SelStart = 0
           TabOrder = 8
           ThumbLength = 16
           TickMarks = tmTopLeft
+          TickStyle = tsAuto
           OnChange = TV_TrackBarChange
         end
         object ChkMouseFadingEnabled: TCheckBox
@@ -382,10 +389,6 @@ object NMOptions: TNMOptions
     object GraphTabSheet: TTabSheet
       Caption = 'Graph'
       ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object ScalingPropGrp: TGroupBox
         Left = 8
         Top = 8
@@ -433,7 +436,7 @@ object NMOptions: TNMOptions
           Height = 21
           Style = csDropDownList
           Enabled = False
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 1
           OnSelect = BWComboSelect
           Items.Strings = (
@@ -520,7 +523,7 @@ object NMOptions: TNMOptions
           Width = 161
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 3
           OnSelect = UDDUnitComboSelect
         end
@@ -530,7 +533,7 @@ object NMOptions: TNMOptions
           Width = 161
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 4
           OnSelect = TUDDUnitComboSelect
         end
@@ -540,7 +543,7 @@ object NMOptions: TNMOptions
           Width = 161
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 5
           OnSelect = MVDUnitComboSelect
         end
@@ -593,7 +596,7 @@ object NMOptions: TNMOptions
           Width = 129
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 2
           OnChange = VertGridComboChange
           Items.Strings = (
@@ -608,10 +611,6 @@ object NMOptions: TNMOptions
     object FontTabSheet: TTabSheet
       Caption = 'Fonts + Colors'
       ImageIndex = 3
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object FontPropGrp: TGroupBox
         Left = 8
         Top = 8
@@ -835,7 +834,7 @@ object NMOptions: TNMOptions
           Width = 249
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           ItemIndex = 0
           TabOrder = 2
           Text = 'MAX display border'
@@ -861,10 +860,6 @@ object NMOptions: TNMOptions
     object TabSheet2: TTabSheet
       Caption = 'Totals + Reports'
       ImageIndex = 3
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object PeriodsGroup: TGroupBox
         Left = 8
         Top = 8
@@ -899,7 +894,7 @@ object NMOptions: TNMOptions
           Width = 97
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 0
           OnSelect = MPComboSelect
           Items.Strings = (
@@ -938,7 +933,7 @@ object NMOptions: TNMOptions
           Width = 97
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 1
           OnSelect = WPComboSelect
           Items.Strings = (
@@ -964,7 +959,7 @@ object NMOptions: TNMOptions
           Width = 161
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 0
           OnSelect = TDUComboSelect
         end
@@ -1013,15 +1008,11 @@ object NMOptions: TNMOptions
     object TabSheet3: TTabSheet
       Caption = 'Notifications'
       ImageIndex = 4
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object NotificationGroup: TGroupBox
         Left = 8
         Top = 8
-        Width = 249
-        Height = 57
+        Width = 417
+        Height = 73
         Caption = 'Type of Notification'
         TabOrder = 0
         object RadioBalloonHint: TRadioButton
@@ -1042,10 +1033,27 @@ object NMOptions: TNMOptions
           TabOrder = 1
           OnClick = RadioBalloonHintClick
         end
+        object RadioCmd: TRadioButton
+          Left = 8
+          Top = 48
+          Width = 129
+          Height = 17
+          Caption = 'Run command:'
+          TabOrder = 2
+          OnClick = RadioBalloonHintClick
+        end
+        object EditRunCmd: TEdit
+          Left = 104
+          Top = 48
+          Width = 305
+          Height = 21
+          TabOrder = 3
+          OnExit = EditRunCmdExit
+        end
       end
       object TVAGroup: TGroupBox
         Left = 8
-        Top = 75
+        Top = 83
         Width = 265
         Height = 132
         Caption = 'Traffic volume alert'
@@ -1086,7 +1094,7 @@ object NMOptions: TNMOptions
           Width = 110
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 2
           OnSelect = TLUComboSelect
           Items.Strings = (
@@ -1101,7 +1109,7 @@ object NMOptions: TNMOptions
           Width = 129
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 0
           OnSelect = TLUDComboSelect
           Items.Strings = (
@@ -1115,7 +1123,7 @@ object NMOptions: TNMOptions
           Width = 65
           Height = 21
           Style = csDropDownList
-          ItemHeight = 0
+          ItemHeight = 13
           TabOrder = 3
           OnSelect = TLPComboSelect
           Items.Strings = (
@@ -1135,21 +1143,53 @@ object NMOptions: TNMOptions
       end
       object ChkMonProbNotify: TCheckBox
         Left = 8
-        Top = 218
+        Top = 226
         Width = 153
         Height = 17
         Caption = 'Notify monitoring problems'
         TabOrder = 2
         OnClick = ChkMonProbNotifyClick
       end
+      object ListNotify: TListBox
+        Left = 280
+        Top = 88
+        Width = 137
+        Height = 105
+        ItemHeight = 13
+        TabOrder = 3
+        OnClick = ListNotifyClick
+      end
+      object BtnAddNotify: TButton
+        Left = 280
+        Top = 224
+        Width = 65
+        Height = 25
+        Caption = 'Add'
+        TabOrder = 4
+        OnClick = BtnAddNotifyClick
+      end
+      object BtnDelNotify: TButton
+        Left = 352
+        Top = 224
+        Width = 65
+        Height = 25
+        Caption = 'Delete'
+        TabOrder = 5
+        OnClick = BtnDelNotifyClick
+      end
+      object EditNotifyName: TEdit
+        Left = 280
+        Top = 192
+        Width = 137
+        Height = 21
+        TabOrder = 6
+        Text = 'Notification 1'
+        OnExit = EditNotifyNameExit
+      end
     end
     object TabSheet4: TTabSheet
       Caption = 'Tray Icon'
       ImageIndex = 5
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object RadioGroup1: TRadioGroup
         Left = 8
         Top = 8
@@ -1179,6 +1219,7 @@ object NMOptions: TNMOptions
     end
   end
   object ColorDialog1: TColorDialog
+    Ctl3D = True
     Options = [cdFullOpen]
     Left = 160
     Top = 333
@@ -1189,6 +1230,8 @@ object NMOptions: TNMOptions
     Font.Height = -11
     Font.Name = 'Microsoft Sans Serif'
     Font.Style = []
+    MinFontSize = 0
+    MaxFontSize = 0
     Options = []
     Left = 128
     Top = 333

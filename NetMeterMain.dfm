@@ -1,11 +1,11 @@
 object NMMain: TNMMain
   Left = 1029
   Top = 743
+  Width = 203
+  Height = 148
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSizeToolWin
   Caption = 'NetMeter'
-  ClientHeight = 121
-  ClientWidth = 195
   Color = clBtnFace
   DefaultMonitor = dmDesktop
   Font.Charset = ANSI_CHARSET
@@ -44,9 +44,7 @@ object NMMain: TNMMain
     000000000000000000000000000000000000000000000000000000000000}
   OldCreateOrder = False
   PopupMenu = NMPopupMenu
-  Position = poDesigned
   Scaled = False
-  ScreenSnap = True
   OnActivate = FormActivate
   OnClose = FormClose
   OnCreate = FormCreate
@@ -747,9 +745,5 @@ object NMMain: TNMMain
       F7000000F80FFE03F80007C007000000FC1FFE03F800078007000000FE3FFE03
       F80007FFFF000000FF7FFE03FFFFFFFFFF000000FFFFFFFFFFFFFFFFFF000000
       00000000000000000000000000000000000000000000}
-  end
-  object XPManifest1: TXPManifest
-    Left = 128
-    Top = 88
   end
 end

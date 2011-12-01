@@ -27,7 +27,7 @@ uses
   ImgList, Menus, ActnList, IniFiles, DateUtils, Types, ShlObj, ActiveX,
   SimpleTimer, CoolTrayIcon,
   NetMeterGlobal, NetMeterIPHLP, NetMeterTrafficLog, NetMeterTrafficBuffer, NetMeterGraph,
-  NetMeterTrayIcon, XPMan;
+  NetMeterTrayIcon, ShellApi;
 
 type
   TNMMain = class(TForm)
@@ -50,7 +50,6 @@ type
     ShowMeter1: TMenuItem;
     Totals: TAction;
     ShowTotals1: TMenuItem;
-    XPManifest1: TXPManifest;
     procedure FormCreate(Sender: TObject);
     procedure OptionsExecute(Sender: TObject);
     procedure ApplyOptionsExecute(Sender: TObject);
@@ -122,7 +121,7 @@ type
     procedure INI_LoadSaveErrorProc(const msg : integer; var retry : boolean );
     procedure TLG_LoadSaveErrorProc(Sender: TObject; const msg : integer; var retry : boolean );
     procedure TLG_CSVLoadSaveErrorProc(Sender: TObject; const msg : integer; var retry : boolean );
-    procedure TL_WarningProc(Sender: TObject; const msg : integer);
+    procedure TL_WarningProc(Sender: TObject; const msg : integer; const n : Pointer);
     procedure IF_ErrorProc(Sender: TObject; const msg : integer);
   public
     { Public declarations }
@@ -200,6 +199,10 @@ end;
 
 var
   ts : TMemoryStream;
+  s : string;
+  n : NotifyRecord;
+  i, default : integer;
+  sections : TStringList;
 begin
   Result := INI_ReadOK;
 
@@ -241,13 +244,43 @@ begin
       NMO.LogfileAutosaveEnabled  := ReadBool   (Ini_OptSection, Ini_OptLFAS,   TRUE);
       NMO.LogfileAutosaveMinutes  := ReadInteger(Ini_OptSection, Ini_OptLFASM,  5);
 
-      NMO.TVAlertEnabled          := ReadBool   (Ini_OptSection, Ini_OptTVAE,   FALSE);
-      NMO.TrafficLimit            := ReadInteger(Ini_OptSection, Ini_OptTL,     0);
-      NMO.TrafficLimitUnit        := ReadInteger(Ini_OptSection, Ini_OptTLU,    TL_Gibibytes);
-      NMO.TrafficLimitULorDL      := ReadInteger(Ini_OptSection, Ini_OptTLULDL, TL_UpAndDown);
-      NMO.TrafficLimitPeriod      := ReadInteger(Ini_OptSection, Ini_OptTLP,    TL_Month);
-      NMO.TrayIcon_BalloonHints   := ReadBool   (Ini_OptSection, Ini_OptTIBH,   not iswin9x);
-      NMO.NotifyMonitoringProblems:= ReadBool   (Ini_OptSection, Ini_OptNMP,    TRUE);
+      //NMO.TVAlertEnabled          := ReadBool   (Ini_OptSection, Ini_OptTVAE,   FALSE);
+      //NMO.TrafficLimit            := ReadInteger(Ini_OptSection, Ini_OptTL,     0);
+      //NMO.TrafficLimitUnit        := ReadInteger(Ini_OptSection, Ini_OptTLU,    TL_Gibibytes);
+      //NMO.TrafficLimitULorDL      := ReadInteger(Ini_OptSection, Ini_OptTLULDL, TL_UpAndDown);
+      //NMO.TrafficLimitPeriod      := ReadInteger(Ini_OptSection, Ini_OptTLP,    TL_Month);
+      //NMO.TrayIcon_BalloonHints   := ReadBool   (Ini_OptSection, Ini_OptTIBH,   not iswin9x);
+      //NMO.NotifyRunCmd            := ReadBool   (Ini_OptSection, Ini_OptNRC,    FALSE);
+      //NMO.NotifyCmd               := ReadString (Ini_OptSection, Ini_OptNC,     '') ;
+      //NMO.NotifyMonitoringProblems:= ReadBool   (Ini_OptSection, Ini_OptNMP,    TRUE);
+
+      sections := TStringList.Create;
+      ReadSections(sections);
+      for i := 0 to sections.Count - 1 do
+        begin
+          s := sections[i];
+          OutputDebugString(PChar('read section ' + s));
+          if (s = Ini_OptSection) or (s = Ini_VerSection) or (s = Ini_PosSection) then
+            Continue;
+          n.NotifyName := s;
+          if iswin9x then
+            default := NT_POPUP
+          else
+            default := NT_BALLOON;
+
+          n.NotifyType                  := ReadInteger(s, Ini_OptNT,     default);
+          n.Cmd                         := ReadString (s, Ini_OptCMD,    '');
+          n.NotifyMonitoringProblems    := ReadBool   (s, Ini_OptNMP,    TRUE);
+          n.TVAlertEnabled              := ReadBool   (s, Ini_OptTVAE,   FALSE);
+          n.TrafficLimit                := ReadInteger(s, Ini_OptTL,     0);
+          n.TrafficLimitUnit            := ReadInteger(s, Ini_OptTLU,    TL_Gibibytes);
+          n.TrafficLimitULorDL          := ReadInteger(s, Ini_OptTLULDL, TL_UpAndDown);
+          n.TrafficLimitPeriod          := ReadInteger(s, Ini_OptTLP,    TL_Month);
+          
+          SetLength(NMO.Notify, Length(NMO.Notify) + 1);
+          NMO.Notify[High(NMO.Notify)] := n;
+        end;
+
       NMO.UseOldDUDescription     := ReadBool   (Ini_OptSection, Ini_OptUOD,    FALSE);
       NMO.UseOldTrayIcons         := ReadBool   (Ini_OptSection, Ini_OptUOTI,   iswin9x);
 
@@ -328,6 +361,9 @@ var
 function DoWrite : integer;
 var
   ts : TMemoryStream;
+  i : integer;
+  sections : TStringList;
+  s : string;
 begin
   Result := INI_WriteOK;
 
@@ -365,13 +401,16 @@ begin
       WriteBool   (Ini_OptSection, Ini_OptLFAS,     NMO.LogfileAutosaveEnabled);
       WriteInteger(Ini_OptSection, Ini_OptLFASM,    NMO.LogfileAutosaveMinutes);
 
-      WriteBool   (Ini_OptSection, Ini_OptTVAE,     NMO.TVAlertEnabled);
+      {WriteBool   (Ini_OptSection, Ini_OptTVAE,     NMO.TVAlertEnabled);
       WriteInteger(Ini_OptSection, Ini_OptTL,       NMO.TrafficLimit);
       WriteInteger(Ini_OptSection, Ini_OptTLU,      NMO.TrafficLimitUnit);
       WriteInteger(Ini_OptSection, Ini_OptTLULDL,   NMO.TrafficLimitULorDL);
       WriteInteger(Ini_OptSection, Ini_OptTLP,      NMO.TrafficLimitPeriod);
       WriteBool   (Ini_OptSection, Ini_OptTIBH,     NMO.TrayIcon_BalloonHints);
-      WriteBool   (Ini_OptSection, Ini_OptNMP,      NMO.NotifyMonitoringProblems);
+      WriteBool   (Ini_OptSection, Ini_OptNRC,      NMO.NotifyRunCmd);
+      WriteString (Ini_OptSection, Ini_OptNC,       NMO.NotifyCmd);
+      WriteBool   (Ini_OptSection, Ini_OptNMP,      NMO.NotifyMonitoringProblems);}
+
       WriteBool   (Ini_OptSection, Ini_OptUOD,      NMO.UseOldDUDescription);
       WriteBool   (Ini_OptSection, Ini_OptUOTI,     NMO.UseOldTrayIcons);
 
@@ -423,6 +462,32 @@ begin
       WriteBool   (Ini_OptSection, Ini_OptFNT_MV_B, NMO.FontMV.Bold);
       WriteBool   (Ini_OptSection, Ini_OptFNT_MV_I, NMO.FontMV.Italic);
       WriteBool   (Ini_OptSection, Ini_OptFAS,      NMO.FontAutosize);
+
+      sections := TStringList.Create;
+      ReadSections(sections);
+      for i := 0 to sections.Count - 1 do
+        begin
+          s := sections[i];
+          if (s = Ini_OptSection) or (s = Ini_VerSection) or (s = Ini_PosSection) then
+            Continue
+          else
+            EraseSection(s);
+          OutputDebugString(PChar('erase section ' + s));
+        end;
+
+      for i := Low(NMO.Notify) to High(NMO.Notify) do
+        with NMO.Notify[i] do
+          begin
+            OutputDebugString(PChar('write section ' + NotifyName));
+            WriteBool   (NotifyName, Ini_OptTVAE,     TVAlertEnabled);
+            WriteInteger(NotifyName, Ini_OptTL,       TrafficLimit);
+            WriteInteger(NotifyName, Ini_OptTLU,      TrafficLimitUnit);
+            WriteInteger(NotifyName, Ini_OptTLULDL,   TrafficLimitULorDL);
+            WriteInteger(NotifyName, Ini_OptTLP,      TrafficLimitPeriod);
+            WriteString (NotifyName, Ini_OptCMD,      Cmd);
+            WriteInteger(NotifyName, Ini_OptNT,       NotifyType);
+            WriteBool   (NotifyName, Ini_OptNMP,      NotifyMonitoringProblems);
+          end;
 
       UpdateFile;
     end;
@@ -477,22 +542,38 @@ begin
   retry := ( MessageDlg( s, mtError, [mbRetry, mbAbort], 0 ) = mrRetry );
 end;
 
-procedure TNMMain.TL_WarningProc(Sender: TObject; const msg : integer);
+procedure TNMMain.TL_WarningProc(Sender: TObject; const msg : integer; const n : Pointer);
+var
+  np : ^NotifyRecord;
 begin
-  if NMO.TrayIcon_BalloonHints then
-    NMTray.ShowBalloonHint( Application.Title, TL_Msg[ msg ], BitInfo, 10)
-  else
-    MessageForm( TL_Msg[ msg ] );
+  np := n;
+  case np.NotifyType of
+    NT_Balloon:
+      NMTray.ShowBalloonHint( Application.Title, TL_Msg[ msg ], BitInfo, 10);
+    NT_Popup:
+      MessageForm( TL_Msg[ msg ] );
+    NT_Cmd:
+      ShellExecute(Handle, 'open', PChar(np.Cmd), PChar(IntToStr(msg)), nil, SW_SHOWNORMAL);
+  end;
 end;
 
 procedure TNMMain.IF_ErrorProc(Sender: TObject; const msg : integer);
+var
+  i : integer;
 begin
-if NMO.NotifyMonitoringProblems then
+for i := Low(NMO.Notify) to High(NMO.Notify) do
+with NMO.Notify[i] do
+if NotifyMonitoringProblems then
 begin
-  if NMO.TrayIcon_BalloonHints then
-    NMTray.ShowBalloonHint( Application.Title, IFS_Msg[ msg ], BitInfo, 10)
-  else
-    MessageForm( IFS_Msg[ msg ] );
+  case NotifyType of
+    NT_Balloon:
+      NMTray.ShowBalloonHint( Application.Title, IFS_Msg[ msg ], BitInfo, 10);
+    NT_Popup:
+      MessageForm( IFS_Msg[ msg ] );
+    NT_Cmd:
+      ShellExecute(Handle, 'open', PChar(Cmd), nil, nil, SW_SHOWNORMAL);
+  end;
+  Exit;
 end;
 end;
 
@@ -925,6 +1006,7 @@ var
   tdwo : TDayAndWeekOffset;
   tc : TTrafficLimitRec;
   fstyle : longint;
+  i : integer;
 begin
   with NMO_TMP do
     begin
@@ -961,7 +1043,7 @@ begin
       MWI_WaitCounter := 0;
 
       //Snap to screen edges stuff
-      NMMain.ScreenSnap := SnapToScreenEdges;
+      //NMMain.ScreenSnap := SnapToScreenEdges;
 
       //Transparency stuff
       NMMain.AlphaBlendValue := TransparencyValue;
@@ -1042,15 +1124,22 @@ begin
           MonthStartsOn := NMO.MonthStartsOn;
         end;
       DayAndWeekOffset := tdwo;
-      with tc do
-        begin
-          Value  := NMO.TrafficLimit;
-          TLUnit := NMO.TrafficLimitUnit;
-          ULorDL := NMO.TrafficLimitULorDL;
-          Period := NMO.TrafficLimitPeriod;
-        end;
-      TrafficLimit := tc;
-      TrafficLimitEnabled := NMO.TVAlertEnabled;
+      ClearTrafficLimits;
+      for i := Low(NMO.Notify) to High(NMO.Notify) do
+      begin
+        with tc do
+          begin
+            Value   := NMO.Notify[i].TrafficLimit;
+            TLUnit  := NMO.Notify[i].TrafficLimitUnit;
+            ULorDL  := NMO.Notify[i].TrafficLimitULorDL;
+            Period  := NMO.Notify[i].TrafficLimitPeriod;
+            Enabled := NMO.Notify[i].TVAlertEnabled;
+            Notify  := @NMO.Notify[i];
+            FWarningLevelReached := FALSE;
+            FTrafficLimitReached := FALSE;
+          end;
+        TrafficLimitAdd(tc);
+      end;
 
       AutosaveEnabled  := NMO.LogfileAutosaveEnabled;
       AutosaveInterval := NMO.LogfileAutosaveMinutes;
@@ -1353,3 +1442,4 @@ begin
 end;
 
 end.
+

@@ -27,6 +27,20 @@ uses
   NetMeterTrafficLog, NetMeterGraph, IPHLPAPI;
 
 type
+  NotifyRecord =
+    record
+      NotifyName: string;
+      NotifyType: integer;
+      Cmd : string;
+      NotifyMonitoringProblems : boolean;
+      // Traffic alert options
+      TVAlertEnabled : boolean;
+      TrafficLimit,
+      TrafficLimitUnit,
+      TrafficLimitULorDL,
+      TrafficLimitPeriod : integer;
+    end;
+
   NMOptionsRecord =
     record
       // Window properties
@@ -44,8 +58,6 @@ type
       TransparencyEnabled : boolean;
       TransparencyValue : integer;
       RunOnStartup,
-      TrayIcon_BalloonHints,
-      NotifyMonitoringProblems,
       UseOldDUDescription,
       UseOldTrayIcons : boolean;
       // Totals and Report options
@@ -54,12 +66,6 @@ type
       TotalsDisplayUnit : integer;
       LogfileAutosaveEnabled : boolean;
       LogfileAutosaveMinutes : integer;
-      // Traffic alert options
-      TVAlertEnabled : boolean;
-      TrafficLimit,
-      TrafficLimitUnit,
-      TrafficLimitULorDL,
-      TrafficLimitPeriod : integer;
       // Interface to monitor
       IFToMonitor : integer;
       IFDescription : IF_DESCRIPTION;
@@ -80,7 +86,10 @@ type
       FontMV : GR_FontType;
       FontAutosize : boolean;
       Color : GR_ColorsType;
+      // Notifications
+      Notify: array of NotifyRecord;
     end;
+
 
   DU_DisplaySymbol =
     record
@@ -206,6 +215,10 @@ const
   PBT_APMRESUMESUSPEND      = $7;
   PBT_APMRESUMESTANDBY      = $8;
 
+  NT_Balloon = 0;
+  NT_Popup   = 1;
+  NT_Cmd     = 2;
+
   //Digit imput stuff
   Zero = '';
   Digits : set of char = ['0','1','2','3','4','5','6','7','8','9'];
@@ -259,6 +272,11 @@ const
     TL_Week,
     TL_Month);
 
+  NotifyType_Values : array[0..2] of integer = (
+    NT_Balloon,
+    NT_Popup,
+    NT_Cmd);
+
   // INI-file stuff
   INI_ReadOK        = 0;
   INI_WriteOK       = 1;
@@ -295,6 +313,8 @@ const
   Ini_OptMFE      = 'MouseFadingEnabled';
   Ini_OptMFI      = 'MouseFadingIn';
   Ini_OptTIBH     = 'TrayIconBalloonHints';
+  Ini_OptCMD      = 'NotifyCmd';
+  Ini_OptNT       = 'NotifyType';
   Ini_OptNMP      = 'NotifyMonitoringProblems';
   Ini_OptUOD      = 'UseOldDUDescription';
   Ini_OptUOTI     = 'UseOldTrayIcons';

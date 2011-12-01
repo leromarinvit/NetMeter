@@ -1,4 +1,3 @@
-// ************************************************************************** //
 //                           NetMeter 1.1.4 BETA                              //
 //                    Copyright (C) 2009 Oliver Winterholler                  //
 // ************************************************************************** //
@@ -145,6 +144,10 @@ type
     TLUnit,
     ULorDL,
     Period : Integer;
+    Enabled : boolean;
+    Notify : Pointer;
+    FWarningLevelReached,
+    FTrafficLimitReached : boolean;
   end;
 
   TTrafficCounterRec = record
@@ -155,7 +158,7 @@ type
     AvgLeftPerDay : Int64;
   end;
 
-  TTrafficLimitWarningProc = procedure(Sender: TObject; const msg : integer) of object;
+  TTrafficLimitWarningProc = procedure(Sender: TObject; const msg : integer; const n : Pointer) of object;
 
   TDayAndWeekOffset = record
     WeekStartsOn,
@@ -178,10 +181,8 @@ type
     FAutosaveInterval : cardinal;
     FOnTrafficLimitWarning : TTrafficLimitWarningProc;
     FTrafficLimitEnabled : boolean;
-    FTrafficLimit : TTrafficLimitRec;
+    FTrafficLimit : array of TTrafficLimitRec;
     FTrafficLimitData : TTrafficCounterRec;
-    FWarningLevelReached,
-    FTrafficLimitReached : boolean;
     //CSV import/export
     FCSVFileName : string;
     FOnCSVLoadSaveError : TCSVLoadSaveErrorProc;
@@ -193,6 +194,7 @@ type
     procedure TrafficLimitReset;
     procedure SetTrafficLimit( NewLimit : TTrafficLimitRec );
     procedure CheckTrafficLimit( Sender : TObject );
+    function GetTrafficLimit ( Index : integer ) : TTrafficLimitRec;
   public
     constructor Create;
     destructor Destroy; override;
@@ -202,6 +204,8 @@ type
     procedure SetDayAndWeekOffset( NewOffset : TDayAndWeekOffset );
     procedure LoadFromFile;
     procedure SaveToFile;
+    procedure TrafficLimitAdd( tl : TTrafficLimitRec );
+    procedure ClearTrafficLimits;
     //CSV stuff
     function CSVLoadFromFile : boolean;
     procedure CSVSaveToFile;
@@ -219,7 +223,7 @@ type
     property AutosaveEnabled : boolean read FAutosaveEnabled write SetAutosaveEnabled;
     property AutosaveInterval : cardinal read FAutosaveInterval write SetAutosaveInterval;
     property TrafficLimitEnabled : boolean read FTrafficLimitEnabled write SetTrafficLimitEnabled;
-    property TrafficLimit : TTrafficLimitRec read FTrafficLimit write SetTrafficLimit;
+    property TrafficLimit[Index : integer] : TTrafficLimitRec read GetTrafficLimit;// write SetTrafficLimit;
     property TrafficLimitData : TTrafficCounterRec read FTrafficLimitData;
     property OnLoadSaveError : TLoadSaveErrorProc read FOnLoadSaveError write FOnLoadSaveError;
     property OnTrafficLimitWarning : TTrafficLimitWarningProc read FOnTrafficLimitWarning write FOnTrafficLimitWarning;
@@ -229,7 +233,7 @@ type
     //end CSV
   protected
     procedure LoadSaveError( const msg : integer; var retry : boolean ); virtual;
-    procedure TrafficLimitWarning( const msg : integer ); virtual;
+    procedure TrafficLimitWarning( const msg : integer; const n : Pointer ); virtual;
     //CSV stuff
     procedure CSVLoadSaveError( const msg : integer; var retry : boolean ); virtual;
     //end CSV
@@ -436,6 +440,8 @@ begin
 end;
 
 procedure TTrafficLogs.TrafficLimitReset;
+var
+  i : integer;
 begin
   with FTrafficLimitData do
     begin
@@ -445,20 +451,27 @@ begin
       TrafficProjected := 0;
       AvgLeftPerDay    := 0;
     end;
-  FWarningLevelReached := FALSE;
-  FTrafficLimitReached := FALSE;
-  if FTrafficLimitEnabled then CheckTrafficLimit(self);
+  for i := Low(FTrafficLimit) to High(FTrafficLimit) do
+    with FTrafficLimit[i] do
+      begin
+        FWarningLevelReached := FALSE;
+        FTrafficLimitReached := FALSE;
+        if Enabled then CheckTrafficLimit(self);
+      end;
 end;
 
 procedure TTrafficLogs.SetTrafficLimit( NewLimit : TTrafficLimitRec );
+var
+  i : integer;
 begin
-  with FTrafficLimit do
+  for i := Low(FTrafficLimit) to High(FTrafficLimit) do
+  with FTrafficLimit[i] do
     if ( NewLimit.Value  <> Value  ) or
        ( NewLimit.TLUnit <> TLUnit ) or
        ( NewLimit.ULorDL <> ULorDL ) or
        ( NewLimit.Period <> Period ) then
       begin
-        FTrafficLimit := NewLimit;
+        FTrafficLimit[i] := NewLimit;
         TrafficLimitReset;
       end;
 end;
@@ -469,10 +482,10 @@ begin
     FOnLoadSaveError(self, msg, retry);
 end;
 
-procedure TTrafficLogs.TrafficLimitWarning( const msg : integer );
+procedure TTrafficLogs.TrafficLimitWarning( const msg : integer; const n : Pointer );
 begin
   if Assigned(FOnTrafficLimitWarning) then
-    FOnTrafficLimitWarning(self, msg);
+    FOnTrafficLimitWarning(self, msg, n);
 end;
 
 procedure TTrafficLogs.CSVLoadSaveError( const msg : integer; var retry : boolean );
@@ -489,6 +502,8 @@ begin
 end;
 
 constructor TTrafficLogs.Create;
+var
+  i : integer;
 begin
   inherited Create;
 
@@ -504,7 +519,8 @@ begin
 
   FTempLog := TTempTrafficLog.Create;
 
-  with FTrafficLimit do
+  for i := Low(FTrafficLimit) to High(FTrafficLimit) do
+  with FTrafficLimit[i] do
     begin
       Value  := 0;
       TLUnit := TL_Gibibytes;
@@ -635,11 +651,14 @@ var
   tmp_e : TLogEntryRec;
   tmp_l,
   tmp_u : Int64;
-begin with FTrafficLimitData do
+  j : integer;
+begin
+for j := Low(FTrafficLimit) to High(FTrafficLimit) do
+with FTrafficLimitData do
 begin
   cd := Now;
 
-  case FTrafficLimit.Period of
+  case FTrafficLimit[j].Period of
     TL_Day :
       begin
         sd    := StartOfTheDay( cd );
@@ -662,14 +681,14 @@ begin
   end;
 
   tmp_l := 0;
-  case FTrafficLimit.TLUnit of
-    TL_Megabytes : tmp_l := FTrafficLimit.Value * DU_Unit[DU_Kilobyte].Symbol[DU_m].Value;
-    TL_Mebibytes : tmp_l := FTrafficLimit.Value * DU_Unit[DU_Kibibyte].Symbol[DU_m].Value;
-    TL_Gigabytes : tmp_l := FTrafficLimit.Value * DU_Unit[DU_Kilobyte].Symbol[DU_g].Value;
-    TL_Gibibytes : tmp_l := FTrafficLimit.Value * DU_Unit[DU_Kibibyte].Symbol[DU_g].Value;
+  case FTrafficLimit[j].TLUnit of
+    TL_Megabytes : tmp_l := FTrafficLimit[j].Value * DU_Unit[DU_Kilobyte].Symbol[DU_m].Value;
+    TL_Mebibytes : tmp_l := FTrafficLimit[j].Value * DU_Unit[DU_Kibibyte].Symbol[DU_m].Value;
+    TL_Gigabytes : tmp_l := FTrafficLimit[j].Value * DU_Unit[DU_Kilobyte].Symbol[DU_g].Value;
+    TL_Gibibytes : tmp_l := FTrafficLimit[j].Value * DU_Unit[DU_Kibibyte].Symbol[DU_g].Value;
   end;
 
-  case FTrafficLimit.ULorDL of
+  case FTrafficLimit[j].ULorDL of
     TL_UploadOnly   :
       tmp_u := tmp_e.Upload;
     TL_DownloadOnly :
@@ -687,24 +706,24 @@ begin
 
   if TrafficUsed >= TrafficLimit then
     begin
-      if not FTrafficLimitReached then
+      if not FTrafficLimit[j].FTrafficLimitReached then
         begin
-          FTrafficLimitReached := TRUE;
-          TrafficLimitWarning(TL_Reached);
+          FTrafficLimit[j].FTrafficLimitReached := TRUE;
+          TrafficLimitWarning(TL_Reached, FTrafficLimit[j].Notify);
         end;
     end
   else
     begin
       if TrafficProjected >= TrafficLimit then
         begin
-          if not FWarningLevelReached then
+          if not FTrafficLimit[j].FWarningLevelReached then
             begin
-              FWarningLevelReached := TRUE;
-              TrafficLimitWarning(TL_Warning);
+              FTrafficLimit[j].FWarningLevelReached := TRUE;
+              TrafficLimitWarning(TL_Warning, FTrafficLimit[j].Notify);
             end;
         end
       else
-        FWarningLevelReached := FALSE;
+        FTrafficLimit[j].FWarningLevelReached := FALSE;
     end;
 end;
 end;
@@ -964,6 +983,25 @@ begin
     if Status <> TLG_CSVSaveOK then
       CSVLoadSaveError( Status, ShouldRetry );
   until ShouldRetry = FALSE;
+end;
+
+function TTrafficLogs.GetTrafficLimit(Index : integer) : TTrafficLimitRec;
+begin
+  Result := FTrafficLimit[Index];
+end;
+
+procedure TTrafficLogs.TrafficLimitAdd( tl : TTrafficLimitRec );
+begin
+  SetLength(FTrafficLimit, Length(FTrafficLimit) + 1);
+  FTrafficLimit[High(FTrafficLimit)] := tl;
+  if tl.Enabled then
+    TrafficLimitEnabled := TRUE;
+end;
+
+procedure TTrafficLogs.ClearTrafficLimits;
+begin
+  SetLength(FTrafficLimit, 0);
+  TrafficLimitEnabled := FALSE;
 end;
 
 end.

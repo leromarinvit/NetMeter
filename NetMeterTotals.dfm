@@ -1,6 +1,6 @@
 object NMTotals: TNMTotals
-  Left = 410
-  Top = 387
+  Left = 323
+  Top = 360
   BorderIcons = [biSystemMenu]
   BorderStyle = bsSingle
   Caption = 'Totals and Reports'
@@ -61,6 +61,7 @@ object NMTotals: TNMTotals
     Font.Style = []
     HotTrack = True
     ParentFont = False
+    TabIndex = 0
     TabOrder = 0
     object TotalsTab: TTabSheet
       Caption = 'Totals'
@@ -846,10 +847,6 @@ object NMTotals: TNMTotals
     object ProjectedTab: TTabSheet
       Caption = 'Projected'
       ImageIndex = 4
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object GroupBox6: TGroupBox
         Left = 8
         Top = 120
@@ -1367,10 +1364,6 @@ object NMTotals: TNMTotals
     object DailyTab: TTabSheet
       Caption = 'Daily Reports'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object ListViewDaily: TListView
         Left = 8
         Top = 8
@@ -1415,10 +1408,6 @@ object NMTotals: TNMTotals
     object WeeklyTab: TTabSheet
       Caption = 'Weekly Reports'
       ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object ListViewWeekly: TListView
         Left = 8
         Top = 8
@@ -1463,10 +1452,6 @@ object NMTotals: TNMTotals
     object MonthlyTab: TTabSheet
       Caption = 'Monthly Reports'
       ImageIndex = 3
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object ListViewMonthly: TListView
         Left = 8
         Top = 8
